@@ -169,10 +169,9 @@ def svm_loss_naive(
                 # at the same time that the loss is being computed.                   #
                 #######################################################################
                 # Replace "pass" statement with your code
-
-                dW[:, j] += X[i]  # Gradient update for incorrect class j
-                # Using += ensures that contributions from all examples in the 
+                # Using += ensures that contributions from all examples in the
                 # minibatch are accumulated into dW
+                dW[:, j] += X[i]  # Gradient update for incorrect class j
                 dW[:, y[i]] -= X[i]  # Gradient update for correct class y[i]
                 #######################################################################
                 #                       END OF YOUR CODE                              #
@@ -536,7 +535,34 @@ def softmax_loss_naive(
     # regularization!                                                           #
     #############################################################################
     # Replace "pass" statement with your code
-    pass
+    num_classes = W.shape[1]  # W(D, C)
+    num_train = X.shape[0]  # X(N, D)
+    for i in range(num_train):
+        scores = W.t().mv(X[i])  # (C,)
+        max_score = scores.max()
+        scores -= max_score  # numerical stability
+        correct_class_score = scores[y[i]]
+        # compute the cross entropy loss of X[i]
+        score_exp_sum = torch.exp(scores).sum()
+        softmax = torch.exp(correct_class_score) / score_exp_sum
+        cross_entropy_loss = -torch.log(softmax).item()
+        loss += cross_entropy_loss
+
+        # compute the analytic gradient
+        for j in range(num_classes):
+            xi_coefficient = (torch.exp(scores[j]) / score_exp_sum)
+            if j != y[i]:
+                dW[:, j] += xi_coefficient * X[i]  # Gradient update for incorrect class j
+            else:
+                dW[:, j] += (xi_coefficient - 1) * X[i]  # Gradient update for correct class y[i]
+
+    loss /= num_train
+    # Add regularization to the loss.
+    loss += reg * torch.sum(W * W)
+
+    dW /= num_train  # Average the gradient over the number of training examples
+    dW += reg * 2 * W  # Add regularization gradient
+
     #############################################################################
     #                          END OF YOUR CODE                                 #
     #############################################################################
@@ -566,7 +592,33 @@ def softmax_loss_vectorized(
     # regularization!                                                           #
     #############################################################################
     # Replace "pass" statement with your code
-    pass
+    num_dimension = W.shape[0]  # W(D, C)
+    num_train = X.shape[0]  # X(N, D)
+    scores_matrix = X.mm(W)  # (N, D) * (D, C) = (N, C)
+    # torch.max returns (max_score, indices), discard indices
+    max_scores, _ = scores_matrix.max(dim=1, keepdim=True)  # (N, 1)
+    scores_matrix -= max_scores  # numerical stability
+    correct_class_scores = scores_matrix[torch.arange(num_train), y]
+    # compute the cross entropy loss
+    scores_exp = torch.exp(scores_matrix)
+    scores_exp_sum = scores_exp.sum(dim=1)  # (N,)
+    softmax_vector = torch.exp(correct_class_scores) / scores_exp_sum  # elementwise (N,)
+    loss = -torch.log(softmax_vector).sum()
+
+    # compute the analytic gradient
+    # compute coefficient of X[i]
+    coefficient_matrix = scores_exp / scores_exp_sum.unsqueeze(1)  # elementwise (N, C)
+    coefficient_matrix[torch.arange(num_train), y] -= 1  # coefficient update for correct class y[i]
+    # dW.T(C, D) = (C, N) @ (N, D) coefficient_matrix.T @ X
+    dW = coefficient_matrix.t().mm(X).t()
+
+    loss /= num_train
+    # Add regularization to the loss.
+    loss += reg * torch.sum(W * W)
+
+    dW /= num_train  # Average the gradient over the number of training examples
+    dW += reg * 2 * W  # Add regularization gradient
+
     #############################################################################
     #                          END OF YOUR CODE                                 #
     #############################################################################
@@ -595,7 +647,8 @@ def softmax_get_search_params():
     # classifier.                                                             #
     ###########################################################################
     # Replace "pass" statement with your code
-    pass
+    learning_rates += [10.15e-3, 10.17e-3, 10.19e-3]
+    regularization_strengths += [1e-3, 0.75e-3, 1.25e-3]
     ###########################################################################
     #                           END OF YOUR CODE                              #
     ###########################################################################
