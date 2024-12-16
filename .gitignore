@@ -1,0 +1,13 @@
+# 忽略 .idea 文件夹（JetBrains 系列 IDE 配置）
+.idea/
+
+# 忽略 Python 的缓存文件
+__pycache__/
+*.pyc
+*.pyo
+
+# 忽略数据集压缩包
+A2/cifar-10-python.tar.gz
+
+# 忽略数据集batch文件
+A2/cifar-10-batches-py/
